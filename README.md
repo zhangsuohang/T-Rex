@@ -494,3 +494,34 @@ python -m utils.tianji_sharpa --validate-dataset "${DATASET_DIR}"
 
 Use H.264 explicitly when the pinned writer would otherwise default to AV1. Do not write generated files
 over the release templates; for alternate resolutions call build_features/build_contract with matching shapes.
+
+
+### Native Tianji/Sharpa MCAP
+
+Copy `configs/tianji_sharpa/native_mcap.json`, set portable MCAP paths and task
+instructions, and declare complete episodes as train/validation. Paths are relative
+to the manifest. The T-Rex dataset constructs its own 30Hz/H16 windows directly;
+no LeRobot/JSON image export is required.
+
+```bash
+source env.sh
+python -m qwen_vla.mcap_dataset --manifest "${NATIVE_MANIFEST}" --output "${NATIVE_STATS}"
+python scripts/train_tianji_sharpa.py \
+  --checkpoint-dir "${MIDTRAIN_CHECKPOINT}" --model-path "${QWEN_MODEL}" \
+  --data-format mcap --data-path "${NATIVE_MANIFEST}" --mcap-stats-path "${NATIVE_STATS}" \
+  --output-dir "${LOCAL_RUN_DIR}"
+```
+
+With validation episodes declared, add `--val_ratio 0.05 --val_freq 500` to enable
+validation; the value does not randomly split frames. Normalization is computed
+from training episodes only. Architecture flags still come from the checkpoint.
+There is one slow head RGB view and no wrist views. Ten DEFORM images and the
+checkpoint's 16-frame F6 history use left/right and thumb/index/middle/ring/pinky
+order. F6 history retains the checkpoint's model-grid time spacing, not 16 native
+180Hz samples. FLARE targets use future head frames within the same episode.
+
+Poses use the recorded Pinocchio model world and `EE_0/EE_1`, not a physically
+calibrated palm TCP. Source-time observation sampling preserves receipt times
+for latency analysis; online delivery-delay augmentation is a separate task.
+`utils.tianji_mcap.McapEpisode.tactile_history` also exposes full-rate RAW/DEFORM/F6.
+The current model consumes DEFORM/F6; RAW is available to future encoder changes.

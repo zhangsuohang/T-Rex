@@ -1,0 +1,33 @@
+{
+  "schema_id": "tianji_sharpa_native_mcap_v1",
+  "pose_frame": {
+    "parent": "world",
+    "model": "dual_tianji_ccs615_pinocchio.xml",
+    "left": "EE_0",
+    "right": "EE_1",
+    "physical_tcp_calibrated": false
+  },
+  "hand_angles": "sdk_absolute_radians",
+  "hand_command_order": "same_as_same_side_joint_states",
+  "hand_name_aliases": {
+    "thumb_IP": "thumb_DIP",
+    "pinky_CMC": "pinky_CMC_FE"
+  },
+  "action_semantics": "sdk_submitted_joint_targets_and_their_model_fk",
+  "sdk_success_result": 1,
+  "clocks": {
+    "ros_pose_and_rgb": "ros_header_unix",
+    "native": "host_unix_ns_callback_time",
+    "availability": "mcap_log_time"
+  },
+  "rgb_views": [
+    "head"
+  ],
+  "episodes": [
+    {
+      "path": "recordings/episode_000004.mcap",
+      "task": "teleop",
+      "split": "train"
+    }
+  ]
+}

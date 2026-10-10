@@ -878,7 +878,10 @@ def train(args):
     ]
     optimizer = torch.optim.AdamW(param_groups, lr=args.learning_rate)
 
-    if getattr(args, "data_format", "json") == "lerobot":
+    if getattr(args, "data_format", "json") == "mcap":
+        from qwen_vla.mcap_dataset import TRexMcapDataset
+        dataset = TRexMcapDataset(args, processor, accelerator)
+    elif getattr(args, "data_format", "json") == "lerobot":
         from qwen_vla.lerobot_dataset import TRexLeRobotDataset
         dataset = TRexLeRobotDataset(args, processor, accelerator)
     else:
@@ -1235,7 +1238,10 @@ if __name__ == "__main__":
     parser.add_argument("--data_path", type=str, default="")
     parser.add_argument("--data_root", type=str, default="")
     # Data source: legacy JSON (default) or a LeRobot v3.0 dataset directory.
-    parser.add_argument("--data_format", type=str, default="json", choices=["json", "lerobot"])
+    parser.add_argument("--data_format", type=str, default="json", choices=["json", "lerobot", "mcap"])
+    parser.add_argument("--mcap_fps", type=int, default=30)
+    parser.add_argument("--mcap_stats_path", type=str, default="",
+                        help="Train-only normalization JSON for native MCAP. data_path is the episode manifest.")
     parser.add_argument("--lerobot_root", type=str, default="",
                         help="LeRobot dataset dir (required when --data_format lerobot).")
     parser.add_argument("--lerobot_repo_id", type=str, default="",

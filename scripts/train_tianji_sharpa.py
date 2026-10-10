@@ -11,7 +11,17 @@ from pathlib import Path
 import sys
 
 
-def training_arguments(checkpoint, model_path, data_path, output_dir, validation_data_path=None):
+def training_arguments(
+    checkpoint,
+    model_path,
+    data_path,
+    output_dir,
+    validation_data_path=None,
+    *,
+    data_format="json",
+    mcap_stats_path=None,
+    mcap_fps=30,
+):
     checkpoint = Path(checkpoint)
     config = json.loads((checkpoint / "training_args.json").read_text())
     if config.get("action_dim") != 62 or config.get("action_chunk") != 16:
@@ -22,7 +32,7 @@ def training_arguments(checkpoint, model_path, data_path, output_dir, validation
         "--model_path",
         str(model_path),
         "--data_format",
-        "json",
+        data_format,
         "--data_path",
         str(data_path),
         "--resume_checkpoint",
@@ -62,7 +72,19 @@ def training_arguments(checkpoint, model_path, data_path, output_dir, validation
         if key in config:
             args.extend((f"--{key}", str(config[key])))
     if validation_data_path:
-        args.extend(("--validation_data_path", str(validation_data_path), "--val_freq", "500"))
+        args.extend(
+            ("--validation_data_path", str(validation_data_path), "--val_freq", "500")
+        )
+    if data_format == "mcap":
+        if not mcap_stats_path:
+            raise ValueError("Native MCAP training requires --mcap-stats-path.")
+        if validation_data_path:
+            raise ValueError(
+                "For MCAP, declare validation episodes in the manifest and set --val_ratio > 0."
+            )
+        args.extend(
+            ("--mcap_stats_path", str(mcap_stats_path), "--mcap_fps", str(mcap_fps))
+        )
     return args
 
 
@@ -73,6 +95,9 @@ def main():
     parser.add_argument("--data-path", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--validation-data-path", type=Path)
+    parser.add_argument("--data-format", choices=("json", "mcap"), default="json")
+    parser.add_argument("--mcap-stats-path", type=Path)
+    parser.add_argument("--mcap-fps", type=int, default=30)
     args, overrides = parser.parse_known_args()
     architecture = {
         "--action_dim",
@@ -94,7 +119,14 @@ def main():
             "Architecture flags are inherited from training_args.json; use train.py for architecture experiments."
         )
     arguments = training_arguments(
-        args.checkpoint_dir, args.model_path, args.data_path, args.output_dir, args.validation_data_path
+        args.checkpoint_dir,
+        args.model_path,
+        args.data_path,
+        args.output_dir,
+        args.validation_data_path,
+        data_format=args.data_format,
+        mcap_stats_path=args.mcap_stats_path,
+        mcap_fps=args.mcap_fps,
     )
     script = Path(__file__).with_name("train.py")
     os.execv(sys.executable, [sys.executable, str(script), *arguments, *overrides])
