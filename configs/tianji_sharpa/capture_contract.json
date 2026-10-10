@@ -1,6 +1,7 @@
 {
   "schema_id": "tianji_sharpa_ee62_v1",
-  "status": "draft",
+  "protocol_version": "1.0.0",
+  "status": "released",
   "codebase_version": "v2.1",
   "fps": 30,
   "state_semantics": "measured_absolute_tcp_pose_hand_joints",
@@ -72,10 +73,1406 @@
   ],
   "position_unit": "metre",
   "joint_unit": "radian",
-  "coordinate_frame": null,
+  "coordinate_frame": "episode_robot_base",
+  "world_frame_definition": {
+    "origin": "Midpoint of the left and right arm mounting-base origins at episode start.",
+    "z": "Opposite gravity.",
+    "x": "Robot forward direction projected perpendicular to z and normalized.",
+    "y": "z cross x; right-handed, robot left.",
+    "lifetime": "Fixed for the entire episode, including when the robot base moves. Left/right are robot anatomical sides, not viewer sides."
+  },
+  "tcp_definition": {
+    "origin": "Center of the rigid hand wrist mounting plane; never a moving fingertip.",
+    "z": "From wrist center toward middle-finger MCP, projected into the palm plane and normalized.",
+    "x": "Outward dorsal (back-of-hand) normal, perpendicular to z.",
+    "y": "z cross x; right-handed for BOTH hands.",
+    "transform": "p_base = R_base_tcp @ p_tcp + translation_base_tcp. Rot6D=[R[:,0],R[:,1]]; third column=cross(first,second). State and targets use the same rigid TCP.",
+    "producer": "Convert the SDK/tool frame to this TCP before writing; no SDK, FK or IK is called by the training consumer."
+  },
+  "vector_slices": {
+    "left_xyz": [
+      0,
+      3
+    ],
+    "left_rot6d": [
+      3,
+      9
+    ],
+    "left_hand": [
+      9,
+      31
+    ],
+    "right_xyz": [
+      31,
+      34
+    ],
+    "right_rot6d": [
+      34,
+      40
+    ],
+    "right_hand": [
+      40,
+      62
+    ]
+  },
   "arm_dof_per_side": 7,
   "hand_dof_per_side": 22,
   "joint_layout": "left_arm7,left_hand22,right_arm7,right_hand22",
+  "arm_joint_convention": "Serial chain order from arm base toward wrist; absolute angle in radians about each joint's positive local axis, referenced to the device's mechanical zero. Do not use an episode-relative zero or modulo-wrap continuous angles. Zero/axis definitions must remain fixed within a dataset; device metadata is optional provenance.",
+  "hand_joint_order": [
+    "thumb_CMC_FE",
+    "thumb_CMC_AA",
+    "thumb_MCP_FE",
+    "thumb_MCP_AA",
+    "thumb_IP",
+    "index_MCP_FE",
+    "index_MCP_AA",
+    "index_PIP",
+    "index_DIP",
+    "middle_MCP_FE",
+    "middle_MCP_AA",
+    "middle_PIP",
+    "middle_DIP",
+    "ring_MCP_FE",
+    "ring_MCP_AA",
+    "ring_PIP",
+    "ring_DIP",
+    "pinky_CMC",
+    "pinky_MCP_FE",
+    "pinky_MCP_AA",
+    "pinky_PIP",
+    "pinky_DIP"
+  ],
+  "hand_reference": {
+    "reference_id": "sharpa_wave01_joint_frames_v1",
+    "joint_order": [
+      "thumb_CMC_FE",
+      "thumb_CMC_AA",
+      "thumb_MCP_FE",
+      "thumb_MCP_AA",
+      "thumb_IP",
+      "index_MCP_FE",
+      "index_MCP_AA",
+      "index_PIP",
+      "index_DIP",
+      "middle_MCP_FE",
+      "middle_MCP_AA",
+      "middle_PIP",
+      "middle_DIP",
+      "ring_MCP_FE",
+      "ring_MCP_AA",
+      "ring_PIP",
+      "ring_DIP",
+      "pinky_CMC",
+      "pinky_MCP_FE",
+      "pinky_MCP_AA",
+      "pinky_PIP",
+      "pinky_DIP"
+    ],
+    "angle_unit": "radian",
+    "angle_definition": "q=0 is the supplied reference joint origin. Positive q is right-hand rotation around axis_xyz in the joint frame. T_parent_child(q)=T_origin*Rot(axis,q). Left and right have their own origins; never blindly negate an entire hand. Reference travel limits are informative, not a substitute for device limits.",
+    "source": "T-Rex ba4047ce3e9f3d2013d60de600e136897e90ccb8 hardware_code/third_party/sharpa-urdf-usd-xml/wave_01/{side}_sharpa_wave/{side}_sharpa_wave.urdf",
+    "hands": {
+      "left": {
+        "root_link": "left_hand_C_MC",
+        "joints": [
+          {
+            "name": "left_thumb_CMC_FE",
+            "type": "revolute",
+            "parent": "left_hand_C_MC",
+            "child": "left_thumb_CMC_VL",
+            "origin_xyz": [
+              0.01,
+              -0.026,
+              0.0214
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              -1.5708
+            ],
+            "channel_index": 0,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_thumb_CMC_AA",
+            "type": "revolute",
+            "parent": "left_thumb_CMC_VL",
+            "child": "left_thumb_MC",
+            "origin_xyz": [
+              0.0,
+              -0.005,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -0.7854,
+              0.0
+            ],
+            "channel_index": 1,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_thumb_MCP_FE",
+            "type": "revolute",
+            "parent": "left_thumb_MC",
+            "child": "left_thumb_MCP_VL",
+            "origin_xyz": [
+              0.065,
+              -0.006,
+              -0.010392
+            ],
+            "origin_rpy": [
+              -0.5236,
+              0.0,
+              0.0
+            ],
+            "channel_index": 2,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_thumb_MCP_AA",
+            "type": "revolute",
+            "parent": "left_thumb_MCP_VL",
+            "child": "left_thumb_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 3,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_thumb_IP",
+            "type": "revolute",
+            "parent": "left_thumb_PP",
+            "child": "left_thumb_DP",
+            "origin_xyz": [
+              0.039,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 4,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_thumb_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "left_thumb_DP",
+            "child": "left_thumb_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              -1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_thumb_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "left_thumb_elastomer",
+            "child": "left_thumb_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0276109346321216,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_index_MCP_FE",
+            "type": "revolute",
+            "parent": "left_hand_C_MC",
+            "child": "left_index_MCP_VL",
+            "origin_xyz": [
+              0.001,
+              -0.0303,
+              0.0959
+            ],
+            "origin_rpy": [
+              0.0,
+              -1.5708,
+              -1.5708
+            ],
+            "channel_index": 5,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_index_MCP_AA",
+            "type": "revolute",
+            "parent": "left_index_MCP_VL",
+            "child": "left_index_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 6,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_index_PIP",
+            "type": "revolute",
+            "parent": "left_index_PP",
+            "child": "left_index_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 7,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_index_DIP",
+            "type": "revolute",
+            "parent": "left_index_MP",
+            "child": "left_index_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 8,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_index_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "left_index_DP",
+            "child": "left_index_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              -1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_index_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "left_index_elastomer",
+            "child": "left_index_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0260092574262508,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_middle_MCP_FE",
+            "type": "revolute",
+            "parent": "left_hand_C_MC",
+            "child": "left_middle_MCP_VL",
+            "origin_xyz": [
+              0.0,
+              -0.01,
+              0.0989
+            ],
+            "origin_rpy": [
+              0.0,
+              -1.5708,
+              -1.5708
+            ],
+            "channel_index": 9,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_middle_MCP_AA",
+            "type": "revolute",
+            "parent": "left_middle_MCP_VL",
+            "child": "left_middle_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 10,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_middle_PIP",
+            "type": "revolute",
+            "parent": "left_middle_PP",
+            "child": "left_middle_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 11,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_middle_DIP",
+            "type": "revolute",
+            "parent": "left_middle_MP",
+            "child": "left_middle_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 12,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_middle_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "left_middle_DP",
+            "child": "left_middle_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              -1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_middle_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "left_middle_elastomer",
+            "child": "left_middle_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0260092574262507,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_ring_MCP_FE",
+            "type": "revolute",
+            "parent": "left_hand_C_MC",
+            "child": "left_ring_MCP_VL",
+            "origin_xyz": [
+              0.0015,
+              0.0103,
+              0.0929
+            ],
+            "origin_rpy": [
+              0.0,
+              -1.5708,
+              -1.5708
+            ],
+            "channel_index": 13,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_ring_MCP_AA",
+            "type": "revolute",
+            "parent": "left_ring_MCP_VL",
+            "child": "left_ring_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 14,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_ring_PIP",
+            "type": "revolute",
+            "parent": "left_ring_PP",
+            "child": "left_ring_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 15,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_ring_DIP",
+            "type": "revolute",
+            "parent": "left_ring_MP",
+            "child": "left_ring_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 16,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_ring_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "left_ring_DP",
+            "child": "left_ring_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "left_ring_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "left_ring_elastomer",
+            "child": "left_ring_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0260092574262507,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_pinky_CMC",
+            "type": "revolute",
+            "parent": "left_hand_C_MC",
+            "child": "left_pinky_MC",
+            "origin_xyz": [
+              0.01136,
+              0.0263,
+              0.0869
+            ],
+            "origin_rpy": [
+              -3.1416,
+              0.0,
+              3.1416
+            ],
+            "channel_index": 17,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_pinky_MCP_FE",
+            "type": "revolute",
+            "parent": "left_pinky_MC",
+            "child": "left_pinky_MCP_VL",
+            "origin_xyz": [
+              0.00836,
+              0.0048,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              1.5708,
+              0.0
+            ],
+            "channel_index": 18,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_pinky_MCP_AA",
+            "type": "revolute",
+            "parent": "left_pinky_MCP_VL",
+            "child": "left_pinky_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 19,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_pinky_PIP",
+            "type": "revolute",
+            "parent": "left_pinky_PP",
+            "child": "left_pinky_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 20,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_pinky_DIP",
+            "type": "revolute",
+            "parent": "left_pinky_MP",
+            "child": "left_pinky_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 21,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "left_pinky_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "left_pinky_DP",
+            "child": "left_pinky_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              -1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "left_pinky_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "left_pinky_elastomer",
+            "child": "left_pinky_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0260092574262507,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          }
+        ]
+      },
+      "right": {
+        "root_link": "right_hand_C_MC",
+        "joints": [
+          {
+            "name": "right_thumb_CMC_FE",
+            "type": "revolute",
+            "parent": "right_hand_C_MC",
+            "child": "right_thumb_CMC_VL",
+            "origin_xyz": [
+              0.01,
+              0.026,
+              0.0214
+            ],
+            "origin_rpy": [
+              3.1416,
+              0.0,
+              1.5708
+            ],
+            "channel_index": 0,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_thumb_CMC_AA",
+            "type": "revolute",
+            "parent": "right_thumb_CMC_VL",
+            "child": "right_thumb_MC",
+            "origin_xyz": [
+              0.0,
+              -0.005,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.7854,
+              0.0
+            ],
+            "channel_index": 1,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_thumb_MCP_FE",
+            "type": "revolute",
+            "parent": "right_thumb_MC",
+            "child": "right_thumb_MCP_VL",
+            "origin_xyz": [
+              0.065,
+              -0.006,
+              0.010392
+            ],
+            "origin_rpy": [
+              0.5236,
+              0.0,
+              0.0
+            ],
+            "channel_index": 2,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_thumb_MCP_AA",
+            "type": "revolute",
+            "parent": "right_thumb_MCP_VL",
+            "child": "right_thumb_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 3,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_thumb_IP",
+            "type": "revolute",
+            "parent": "right_thumb_PP",
+            "child": "right_thumb_DP",
+            "origin_xyz": [
+              0.039,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 4,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_thumb_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "right_thumb_DP",
+            "child": "right_thumb_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "right_thumb_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "right_thumb_elastomer",
+            "child": "right_thumb_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.027611,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "right_index_MCP_FE",
+            "type": "revolute",
+            "parent": "right_hand_C_MC",
+            "child": "right_index_MCP_VL",
+            "origin_xyz": [
+              0.001,
+              0.0303,
+              0.0959
+            ],
+            "origin_rpy": [
+              0.0,
+              -1.5708,
+              -1.5708
+            ],
+            "channel_index": 5,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_index_MCP_AA",
+            "type": "revolute",
+            "parent": "right_index_MCP_VL",
+            "child": "right_index_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 6,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_index_PIP",
+            "type": "revolute",
+            "parent": "right_index_PP",
+            "child": "right_index_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 7,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_index_DIP",
+            "type": "revolute",
+            "parent": "right_index_MP",
+            "child": "right_index_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 8,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_index_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "right_index_DP",
+            "child": "right_index_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "right_index_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "right_index_elastomer",
+            "child": "right_index_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.026009,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "right_middle_MCP_FE",
+            "type": "revolute",
+            "parent": "right_hand_C_MC",
+            "child": "right_middle_MCP_VL",
+            "origin_xyz": [
+              0.0,
+              0.01,
+              0.0989
+            ],
+            "origin_rpy": [
+              0.0,
+              -1.5708,
+              -1.5708
+            ],
+            "channel_index": 9,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_middle_MCP_AA",
+            "type": "revolute",
+            "parent": "right_middle_MCP_VL",
+            "child": "right_middle_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 10,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_middle_PIP",
+            "type": "revolute",
+            "parent": "right_middle_PP",
+            "child": "right_middle_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 11,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_middle_DIP",
+            "type": "revolute",
+            "parent": "right_middle_MP",
+            "child": "right_middle_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 12,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_middle_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "right_middle_DP",
+            "child": "right_middle_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              -1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "right_middle_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "right_middle_elastomer",
+            "child": "right_middle_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0260092574262507,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "right_ring_MCP_FE",
+            "type": "revolute",
+            "parent": "right_hand_C_MC",
+            "child": "right_ring_MCP_VL",
+            "origin_xyz": [
+              0.0015,
+              -0.0103,
+              0.0929
+            ],
+            "origin_rpy": [
+              0.0,
+              -1.5708,
+              -1.5708
+            ],
+            "channel_index": 13,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_ring_MCP_AA",
+            "type": "revolute",
+            "parent": "right_ring_MCP_VL",
+            "child": "right_ring_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 14,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_ring_PIP",
+            "type": "revolute",
+            "parent": "right_ring_PP",
+            "child": "right_ring_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 15,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_ring_DIP",
+            "type": "revolute",
+            "parent": "right_ring_MP",
+            "child": "right_ring_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 16,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_ring_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "right_ring_DP",
+            "child": "right_ring_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "right_ring_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "right_ring_elastomer",
+            "child": "right_ring_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.0260092574262503,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5707963267949,
+              1.5707963267949,
+              0.0
+            ]
+          },
+          {
+            "name": "right_pinky_CMC",
+            "type": "revolute",
+            "parent": "right_hand_C_MC",
+            "child": "right_pinky_MC",
+            "origin_xyz": [
+              0.01136,
+              -0.0263,
+              0.0869
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              3.1416
+            ],
+            "channel_index": 17,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_pinky_MCP_FE",
+            "type": "revolute",
+            "parent": "right_pinky_MC",
+            "child": "right_pinky_MCP_VL",
+            "origin_xyz": [
+              0.00836,
+              0.0048,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -1.5708,
+              0.0
+            ],
+            "channel_index": 18,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_pinky_MCP_AA",
+            "type": "revolute",
+            "parent": "right_pinky_MCP_VL",
+            "child": "right_pinky_PP",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              -1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 19,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_pinky_PIP",
+            "type": "revolute",
+            "parent": "right_pinky_PP",
+            "child": "right_pinky_MP",
+            "origin_xyz": [
+              0.047,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              0.0,
+              0.0
+            ],
+            "channel_index": 20,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_pinky_DIP",
+            "type": "revolute",
+            "parent": "right_pinky_MP",
+            "child": "right_pinky_DP",
+            "origin_xyz": [
+              0.0315,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "channel_index": 21,
+            "axis_xyz": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "name": "right_pinky_elastomer_fix_joint",
+            "type": "fixed",
+            "parent": "right_pinky_DP",
+            "child": "right_pinky_elastomer",
+            "origin_xyz": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              -1.5708,
+              0.0
+            ]
+          },
+          {
+            "name": "right_pinky_fingertip_fix_joint",
+            "type": "fixed",
+            "parent": "right_pinky_elastomer",
+            "child": "right_pinky_fingertip",
+            "origin_xyz": [
+              0.0,
+              -0.026009,
+              0.0
+            ],
+            "origin_rpy": [
+              1.5708,
+              1.5708,
+              0.0
+            ]
+          }
+        ]
+      }
+    }
+  },
   "hand_finger_sizes": [
     5,
     4,
@@ -83,6 +1480,7 @@
     4,
     5
   ],
+  "joint_consistency": "The hand blocks of observation.joints equal observation.state; when action.joints exists its hand blocks equal action. Tolerance 1e-4 rad. Arm targets are actual accepted commands, never measured future joints.",
   "tactile_finger_order": [
     "thumb",
     "index",
@@ -91,8 +1489,119 @@
     "pinky"
   ],
   "tactile_force_layout": "left30,right30; per finger Fx,Fy,Fz,Mx,My,Mz",
+  "tactile_force_convention": {
+    "force_unit": "newton",
+    "torque_unit": "newton_metre",
+    "origin": "Center of the distal finger tactile pad contact surface.",
+    "z": "Outward pad surface normal.",
+    "y": "Distal phalanx direction toward fingertip, projected perpendicular to z.",
+    "x": "y cross z; right-handed. Frame moves with the distal phalanx.",
+    "sign": "External environment wrench acting ON the finger; compression along outward normal has negative Fz.",
+    "producer": "Rotate force and torque into this frame and translate torque to this origin. Preserve signed values; no per-frame normalization or clipping in the numeric mother field."
+  },
   "tactile_deform_encoding": "derived_uint8_grayscale_rgb_packed_thumb_first",
-  "tactile_raw_policy": "Retain source bit depth, range and source timestamps outside the derived videos.",
+  "deform_definition": {
+    "tiles": "Five square tiles horizontally, thumb/index/middle/ring/pinky, channel-identical RGB.",
+    "value": "Scalar deformation intensity d in [0,1], no-contact baseline=0, fixed calibration full scale=1; quantize round(255*clip(d,0,1)).",
+    "scaling": "Fixed per-sensor calibration for the whole dataset; no per-frame min/max or auto-exposure rescaling. SDK/camera raw RGB is not a deformation map.",
+    "tile_orientation": "Top=toward fingertip (+pad y); right=+pad x. Producer removes sensor-specific flips/rotations before packing.",
+    "raw": "Raw high-bit-depth/deformation arrays may be retained separately; they do not replace these derived tiles."
+  },
+  "video_shapes": {
+    "observation.images.head": [
+      3,
+      360,
+      640
+    ],
+    "observation.images.left_hand": [
+      3,
+      360,
+      640
+    ],
+    "observation.images.right_hand": [
+      3,
+      360,
+      640
+    ],
+    "observation.images.left_tactile": [
+      3,
+      240,
+      1200
+    ],
+    "observation.images.right_tactile": [
+      3,
+      240,
+      1200
+    ]
+  },
+  "video_encoding": {
+    "container": "mp4",
+    "codec": "h264",
+    "pixel_format": "yuv420p",
+    "fps": 30,
+    "frame_order": "One decoded frame per Parquet row, in row order, no dropped/reordered frames.",
+    "rgb": "Unmirrored, upright RGB on the writer boundary; decode OpenCV BGR to RGB. CHW metadata, HWC uint8 capture arrays. Keep a camera's FOV, mounting and preprocessing fixed within a dataset.",
+    "views": "head=fixed overview camera; left_hand/right_hand=corresponding wrist camera. No swapping sides or substituting another view.",
+    "resolution": "Default RGB 360x640, deform 240x1200. Other positive EVEN CHW shapes are allowed if declared here and in info.json; deform width=5*height. No undeclared per-episode shape changes."
+  },
+  "clock": {
+    "unit": "second",
+    "domain": "One monotonic acquisition clock per recording; hardware clocks must be converted before export.",
+    "origin": "Episode first control-cycle boundary=0; warmup source timestamps may be negative.",
+    "grid": "timestamp[n]=n/30; frame_index starts at 0, contiguous. No normalization, action chunking or relative TCP conversion in mother data.",
+    "observation_stream_order": [
+      "left_state",
+      "right_state",
+      "left_joints",
+      "right_joints",
+      "head_rgb",
+      "left_wrist_rgb",
+      "right_wrist_rgb",
+      "left_deform",
+      "right_deform",
+      "left_f6",
+      "right_f6"
+    ],
+    "observation_source_rule": "source_timestamp <= available_timestamp <= timestamp[n]. Select the latest causally available sample; no future-nearest or future interpolation.",
+    "max_observation_age_seconds": [
+      0.05,
+      0.05,
+      0.05,
+      0.05,
+      0.1,
+      0.1,
+      0.1,
+      0.05,
+      0.05,
+      0.05,
+      0.05
+    ],
+    "command_stream_order": [
+      "left_tcp",
+      "left_hand",
+      "right_tcp",
+      "right_hand"
+    ],
+    "action_rule": "action[n] is the final accepted absolute command assigned to control cycle n, after controller clipping/filtering. command_timestamp is its real acceptance/send timestamp, no later than the next boundary (n+1)/30. A held target retains its original timestamp. Log targets after any hardware-specific interpolation into the protocol boundary; never synthesize targets from observation[n+1].",
+    "freshness": "Repeated slower sensor samples are allowed only within the age limits. A repeated command is allowed only when it is the recorded controller-held target.",
+    "invalid": "All required validity flags must be true for exported training rows. Stop/split the episode on missing/stale/invalid data or command failures; resume with a new episode index and timestamp=0. Never silently remove interior rows, fill images/forces with zeros, or bridge gaps."
+  },
+  "required_feature_keys": [
+    "observation.state",
+    "action",
+    "observation.joints",
+    "observation.tactile_force",
+    "observation.source_timestamp",
+    "observation.available_timestamp",
+    "observation.valid",
+    "action.command_timestamp",
+    "action.valid",
+    "observation.images.head",
+    "observation.images.left_hand",
+    "observation.images.right_hand",
+    "observation.images.left_tactile",
+    "observation.images.right_tactile"
+  ],
   "optional_features": {
     "action.joints": {
       "dtype": "float32",
@@ -161,23 +1670,26 @@
       ]
     }
   },
-  "timing": "observation at t; action is the command assigned to t; future observations are never targets",
-  "synchronization": "Resample observations causally. Preserve source timestamps and validity in capture records.",
-  "tianji_model": null,
-  "sharpa_model": null,
-  "urdf": null,
-  "left_tcp_calibration": null,
-  "right_tcp_calibration": null,
-  "left_hand_sdk_to_q": null,
-  "right_hand_sdk_to_q": null,
-  "camera_calibrations": null,
-  "tactile_deform_scaling": null,
-  "freeze_before_capture": [
-    "hardware models",
-    "SDK joint maps",
-    "base/TCP/camera calibrations",
-    "sensor timestamps and command alignment",
-    "RGB shapes",
-    "deform scaling/F6 units"
-  ]
+  "episode_metadata": {
+    "file": "meta/capture_episodes.jsonl",
+    "required": {
+      "episode_index": "integer",
+      "session_id": "nonempty string",
+      "task_index": "integer",
+      "outcome": "success|failure|unknown"
+    },
+    "task": "One nonempty instruction per episode, referenced by task_index in standard meta/tasks.jsonl; <=512 characters for the FTP exporter.",
+    "split": "Record session_id for grouping; determine train/validation split before model normalization. Never compute validation-only statistics."
+  },
+  "optional_provenance": {
+    "hardware_models": null,
+    "sdk_versions": null,
+    "urdf": null,
+    "joint_maps": null,
+    "calibration_references": null,
+    "raw_archive": null,
+    "rule": "Optional provenance only. Empty or omitted values never block training acceptance. The producer is responsible for conforming numeric meanings and calibration conversions."
+  },
+  "acceptance_boundary": "Automated validation checks structure, finite values, rotations, joint consistency, timing, validity, tasks, video decoding/shape/fps/codec and episode isolation. It cannot prove that a producer used the correct physical calibration, force units or camera mounting; the producer must attest semantic conformance.",
+  "change_policy": "This is the first released v1.0.0 of the previous unpublished EE62 draft. Semantic or ordering changes require a new protocol_version and matching consumer update, never silent reuse of 1.0.0."
 }

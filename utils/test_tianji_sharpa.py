@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 
 import cv2
@@ -26,11 +27,18 @@ def write_mother_dataset(root):
         "codebase_version": "v2.1",
         "fps": 30,
         "total_episodes": 2,
+        "total_frames": 40,
         "features": build_features((3, 8, 8), (3, 8, 40)),
     }
     (root / "meta/info.json").write_text(json.dumps(info))
-    (root / "meta/capture_contract.json").write_text(json.dumps(build_contract()))
+    (root / "meta/capture_contract.json").write_text(json.dumps(build_contract((3, 8, 8), (3, 8, 40))))
     (root / "meta/tasks.jsonl").write_text(json.dumps({"task_index": 0, "task": "test bimanual"}) + "\n")
+    (root / "meta/capture_episodes.jsonl").write_text(
+        "".join(
+            json.dumps({"episode_index": i, "session_id": "test_session", "task_index": 0, "outcome": "unknown"}) + "\n"
+            for i in range(2)
+        )
+    )
     for episode in range(2):
         frames = 20
         state = np.zeros((frames, 62), dtype=np.float32)
@@ -43,32 +51,70 @@ def write_mother_dataset(root):
         targets[:, 9:31] = 0.3 + episode
         targets[:, 40:62] = 0.4 + episode
         force = np.tile(np.arange(60, dtype=np.float32) + episode * 1000, (frames, 1))
+        joints = np.zeros((frames, 58), dtype=np.float32)
+        joints[:, 7:29] = state[:, 9:31]
+        joints[:, 36:58] = state[:, 40:62]
+        grid = np.arange(frames) / 30
         rows = {
             "observation.state": state.tolist(),
             "action": targets.tolist(),
-            "observation.joints": np.zeros((frames, 58), dtype=np.float32).tolist(),
+            "observation.joints": joints.tolist(),
             "observation.tactile_force": force.tolist(),
-            "timestamp": (np.arange(frames) / 30).tolist(),
+            "observation.source_timestamp": np.repeat((grid - 0.02)[:, None], 11, axis=1).tolist(),
+            "observation.available_timestamp": np.repeat((grid - 0.01)[:, None], 11, axis=1).tolist(),
+            "observation.valid": [[True] * 11 for _ in grid],
+            "action.command_timestamp": np.repeat((grid + 0.005)[:, None], 4, axis=1).tolist(),
+            "action.valid": [[True] * 4 for _ in grid],
+            "timestamp": grid.tolist(),
             "frame_index": list(range(frames)),
             "episode_index": [episode] * frames,
             "task_index": [0] * frames,
         }
         data, videos = episode_paths(root, info, episode)
         data.parent.mkdir(parents=True, exist_ok=True)
-        pq.write_table(pa.table(rows), data)
+        table = pa.table(rows)
+        for key, feature in info["features"].items():
+            if key in rows:
+                position = table.schema.get_field_index(key)
+                table = table.set_column(
+                    position, key, table[key].cast(pa.list_(pa.from_numpy_dtype(np.dtype(feature["dtype"]))))
+                )
+        pq.write_table(table, data)
         for key, video in videos.items():
             video.parent.mkdir(parents=True, exist_ok=True)
             size = (40, 8) if "tactile" in key else (8, 8)
-            writer = cv2.VideoWriter(str(video), cv2.VideoWriter_fourcc(*"mp4v"), 30, size)
-            if not writer.isOpened():
-                raise OSError(video)
+            images = []
             for i in range(frames):
                 image = np.full((8, size[0], 3), 60, dtype=np.uint8)
                 if "tactile" in key:
                     for finger in range(5):
                         image[:, finger * 8 : (finger + 1) * 8] = 30 + finger * 40
-                writer.write(image)
-            writer.release()
+                images.append(image)
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-f",
+                    "rawvideo",
+                    "-pixel_format",
+                    "rgb24",
+                    "-video_size",
+                    f"{size[0]}x{size[1]}",
+                    "-framerate",
+                    "30",
+                    "-i",
+                    "pipe:0",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    str(video),
+                ],
+                input=np.stack(images).tobytes(),
+                check=True,
+            )
     return state, targets
 
 

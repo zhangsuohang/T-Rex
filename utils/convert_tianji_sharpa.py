@@ -19,6 +19,7 @@ from utils.tianji_sharpa import SIDES
 from utils.tianji_sharpa import episode_paths
 from utils.tianji_sharpa import load_metadata
 from utils.tianji_sharpa import local_chunk
+from utils.tianji_sharpa import validate_numeric_episode
 from utils.tianji_sharpa import validate_vectors
 
 
@@ -86,6 +87,7 @@ def convert_dataset(root, output, *, train_episodes, val_episodes=()):
     for index in selected:
         parquet, videos = episode_paths(root, info, index)
         rows = pq.read_table(parquet).to_pydict()
+        validate_numeric_episode(rows, episode_index=index)
         states = validate_vectors(rows["observation.state"])
         targets = validate_vectors(rows["action"], "action")
         force = np.asarray(rows["observation.tactile_force"], dtype=np.float32)

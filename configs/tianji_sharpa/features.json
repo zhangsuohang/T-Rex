@@ -273,6 +273,87 @@
       "right_pinky_Mz"
     ]
   },
+  "observation.source_timestamp": {
+    "dtype": "float64",
+    "shape": [
+      11
+    ],
+    "names": [
+      "left_state",
+      "right_state",
+      "left_joints",
+      "right_joints",
+      "head_rgb",
+      "left_wrist_rgb",
+      "right_wrist_rgb",
+      "left_deform",
+      "right_deform",
+      "left_f6",
+      "right_f6"
+    ]
+  },
+  "observation.available_timestamp": {
+    "dtype": "float64",
+    "shape": [
+      11
+    ],
+    "names": [
+      "left_state",
+      "right_state",
+      "left_joints",
+      "right_joints",
+      "head_rgb",
+      "left_wrist_rgb",
+      "right_wrist_rgb",
+      "left_deform",
+      "right_deform",
+      "left_f6",
+      "right_f6"
+    ]
+  },
+  "observation.valid": {
+    "dtype": "bool",
+    "shape": [
+      11
+    ],
+    "names": [
+      "left_state",
+      "right_state",
+      "left_joints",
+      "right_joints",
+      "head_rgb",
+      "left_wrist_rgb",
+      "right_wrist_rgb",
+      "left_deform",
+      "right_deform",
+      "left_f6",
+      "right_f6"
+    ]
+  },
+  "action.command_timestamp": {
+    "dtype": "float64",
+    "shape": [
+      4
+    ],
+    "names": [
+      "left_tcp",
+      "left_hand",
+      "right_tcp",
+      "right_hand"
+    ]
+  },
+  "action.valid": {
+    "dtype": "bool",
+    "shape": [
+      4
+    ],
+    "names": [
+      "left_tcp",
+      "left_hand",
+      "right_tcp",
+      "right_hand"
+    ]
+  },
   "observation.images.head": {
     "dtype": "video",
     "shape": [
