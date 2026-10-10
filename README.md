@@ -387,3 +387,67 @@ If you find T-Rex useful, please cite:
 }
 ```
 <!-- TODO: replace the title / author / arXiv id above with the real values. -->
+
+
+## Tianji + Sharpa bimanual adaptation
+
+The `feat/tianji-sharpa-bimanual` branch consumes processed LeRobot **v2.1** mother data. Each sample uses
+`[left xyz3, left column-pair Rot6D6, left hand22, right xyz3, right column-pair Rot6D6, right hand22]`.
+`observation.state` is measured absolute TCP/hand state; `action` is the recorded absolute commanded target.
+Positions use metres and joints use radians. Rot6D is `[R[:,0], R[:,1]]`. There is no atomic-skill channel.
+
+The draft capture inputs are `configs/tianji_sharpa/features.json` and `capture_contract.json`.
+The feature JSON is a writer input, not a substitute for generated `meta/info.json`. Use `build_features()`
+for tuple shapes, or convert JSON `shape` lists to tuples when calling the pinned v2.1 writer.
+Copy the completed contract into `DATASET_DIR/meta/capture_contract.json`.
+`observation.joints` preserves `[left arm7, left hand22, right arm7, right hand22]` measured joints.
+`action.joints` is optional and must contain actual joint commands when present.
+
+RGB views are `observation.images.head`, `.left_hand`, `.right_hand`.
+Derived deform videos are `.left_tactile` and `.right_tactile`, each five horizontal grayscale-RGB tiles,
+ordered thumb/index/middle/ring/pinky. `observation.tactile_force` is left30 then right30,
+with Fx/Fy/Fz/Mx/My/Mz per finger. Preserve raw bit depth, ranges, timestamps and validity separately;
+do not silently cast uncalibrated SDK output to the derived uint8 video representation.
+The example RGB shapes and 30 Hz grid are draft defaults. Confirm hardware models, SDK joint maps,
+base/TCP/camera calibration, command timing and tactile scaling/F6 units before formal capture.
+No Tianji URDF, inverse kinematics, redundancy policy or hardware SDK is fabricated in this change.
+Already processed TCP poses are required; raw 58D joint data is not accepted as EE62.
+
+Write capture files, conversion outputs and training checkpoints on a local filesystem, then upload
+finished artifacts to OSS. Virtual environments and caches also belong outside the OSS worktree.
+
+
+The new converter preserves the existing T-Rex 62D model and horizon16. It emits T-Rex JSON and
+statistics from v2.1 mother data without installing LeRobot v3 in this environment. Choose episode splits
+before conversion; only training episodes contribute statistics, and validation reuses those statistics.
+Chunks stop at the last complete horizon, rather than supervising targets beyond the episode boundary.
+Fast RGB order is right wrist then left wrist; state/actions and tactile order remain left then right.
+Deform tiles are resized to 240x240 for the inherited encoder.
+
+```bash
+uv run --no-sync python -m utils.convert_tianji_sharpa \
+  --dataset-dir "${DATASET_DIR}" --output-dir "${LOCAL_EXPORT_DIR}" \
+  --train-episodes 0 1 2 --val-episodes 3
+# Activate this project's environment and supply your existing Accelerate configuration.
+# This entrypoint sets no GPU count.
+accelerate launch --config_file "${ACCELERATE_CONFIG}" scripts/train_tianji_sharpa.py \
+  --checkpoint-dir "${MODEL_ROOT}/t-rex/T-Rex_midtrain_mecka23k_ucb100_vqvae_epoch6" \
+  --model-path "${MODEL_ROOT}/qwen/Qwen3-VL-2B-Instruct" \
+  --data-path "${LOCAL_EXPORT_DIR}/train.json" \
+  --validation-data-path "${LOCAL_EXPORT_DIR}/validation.json" \
+  --output-dir "${LOCAL_RUN_ROOT}/trex" --learning_rate 1e-4
+```
+
+`train_tianji_sharpa.py` inherits the action/tactile/FLARE/VQ-VAE architecture flags from the checkpoint,
+including use_robot_state0 for the downloaded release, and enables `--strict_resume`. Missing, unexpected
+or shape-incompatible inherited tensors fail instead of being silently skipped. Existing `scripts/train.sh`
+and its distributed settings remain unchanged. This initializes a new post-training run from midtrain
+weights; it does not resume optimizer state. `utils.tianji_sharpa.absolute_chunk()` restores denormalized
+model outputs into the 62D absolute TCP/hand boundary before the Tianji controller performs IK.
+
+Regression: `python -m unittest utils.test_tianji_sharpa -v`.
+Synthetic Parquet/video conversion, episode isolation, training-only statistics and strict resume failures
+were tested. A real Qwen processor and SftDataset collate also loaded 62D/H16 targets, three RGB views,
+ten deform tiles, VQ-VAE F6 history and eight FLARE targets. The actual downloaded model.pt was inspected against the full model on the meta device:
+1,412 keys, no missing/unexpected keys or shape conflicts. The checkpoint values were not run through a
+full-model optimizer step, and no Tianji hardware motion was executed.

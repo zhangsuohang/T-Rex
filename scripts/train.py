@@ -23,6 +23,7 @@ if _PROJECT_DIR not in sys.path:
     sys.path.insert(0, _PROJECT_DIR)
 
 import json
+from utils.checkpoint_loading import load_resume_weights
 import torch
 import logging
 import argparse
@@ -828,19 +829,7 @@ def train(args):
         resume_sd = torch.load(ckpt_path, map_location="cpu")
         if "state_dict" in resume_sd:
             resume_sd = resume_sd["state_dict"]
-        # Filter out keys with shape mismatch (e.g. tactile MLP from pretrain)
-        model_sd = model.state_dict()
-        filtered_sd = {}
-        skipped = []
-        for k, v in resume_sd.items():
-            if k in model_sd and model_sd[k].shape != v.shape:
-                skipped.append(k)
-            else:
-                filtered_sd[k] = v
-        if skipped:
-            accelerator.print(f"Skipped {len(skipped)} keys with shape mismatch (e.g. {skipped[0]})")
-        missing, unexpected = model.load_state_dict(filtered_sd, strict=False)
-        accelerator.print(f"Resumed: missing={len(missing)}, unexpected={len(unexpected)}")
+        load_resume_weights(model, resume_sd, strict=args.strict_resume, report=accelerator.print)
 
     resumed_tactile = bool(args.resume_checkpoint) and args.resume_source == "midtrain"
     if not freeze_tactile and not resumed_tactile:
@@ -896,7 +885,17 @@ def train(args):
         dataset = SftDataset(args, processor, accelerator)
 
     val_dataloader = None
-    if getattr(args, "val_ratio", 0) > 0:
+    if args.validation_data_path:
+        if args.data_format != "json":
+            raise ValueError("--validation_data_path currently requires JSON data.")
+        import copy
+        val_args = copy.copy(args)
+        val_args.data_path = args.validation_data_path
+        val_dataset = SftDataset(val_args, processor, accelerator)
+        val_dataloader = DataLoader(
+            val_dataset, batch_size=args.train_bsz_per_gpu, shuffle=False,
+            drop_last=False, collate_fn=val_dataset.collate_fn, num_workers=2, pin_memory=True)
+    elif getattr(args, "val_ratio", 0) > 0:
         val_dataset = dataset.create_val_split(
             val_ratio=args.val_ratio, seed=args.seed)
         val_dataloader = DataLoader(
@@ -1265,6 +1264,7 @@ if __name__ == "__main__":
     parser.add_argument("--tactile_intermediate_size", type=int, default=0)
     parser.add_argument("--training_stage", type=int, default=2, choices=[1, 2])
     parser.add_argument("--resume_checkpoint", type=str, default="")
+    parser.add_argument("--strict_resume", action="store_true", help="Reject missing/unexpected/shape-incompatible checkpoint weights.")
     parser.add_argument("--resume_source", type=str, default="pretrain",
                         choices=["pretrain", "midtrain"],
                         help="'pretrain': resumed ckpt did not train tactile (re-init); "
@@ -1322,6 +1322,7 @@ if __name__ == "__main__":
 
     # Validation
     parser.add_argument("--val_ratio", type=float, default=0.0, help="Fraction of samples for validation (0=disable)")
+    parser.add_argument("--validation_data_path", type=str, default="", help="Separate JSON validation episodes using training-only statistics.")
     parser.add_argument("--val_freq", type=int, default=0, help="Run validation every N steps (0=disable)")
     parser.add_argument("--max_val_batches", type=int, default=50, help="Max batches per validation run")
 
