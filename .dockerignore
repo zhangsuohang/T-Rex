@@ -1,0 +1,16 @@
+.git
+.venv
+env.sh
+.env
+checkpoints
+data
+outputs
+assets
+dataset_quickstart
+hardware_code
+third_party
+UniVTAC
+.cache
+.pytest_cache
+**/__pycache__
+*.pyc

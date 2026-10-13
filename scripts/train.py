@@ -527,6 +527,10 @@ def save_checkpoint(model, processor, accelerator, args, epoch, global_step, sta
         with open(os.path.join(save_dir, "stats_data.json"), "w") as f:
             json.dump(stats_data, f, indent=2)
 
+        from scripts.dlc_run import archive_checkpoint
+
+        archive_checkpoint(save_dir)
+
     accelerator.wait_for_everyone()
     logger.info(f"Checkpoint {epoch}-{global_step} saved.")
 
@@ -876,7 +880,8 @@ def train(args):
                     if p.requires_grad and any(nd in n for nd in no_decay)],
          "weight_decay": 0.0},
     ]
-    optimizer = torch.optim.AdamW(param_groups, lr=args.learning_rate)
+    # The fused kernel avoids a parameter-sized temporary for ZeRO's flat groups.
+    optimizer = torch.optim.AdamW(param_groups, lr=args.learning_rate, fused=True)
 
     if getattr(args, "data_format", "json") == "mcap":
         from qwen_vla.mcap_dataset import TRexMcapDataset
@@ -908,7 +913,7 @@ def train(args):
 
     dataloader = DataLoader(
         dataset, batch_size=args.train_bsz_per_gpu, shuffle=True,
-        collate_fn=dataset.collate_fn, num_workers=4, pin_memory=True,
+        collate_fn=dataset.collate_fn, num_workers=args.num_workers, pin_memory=True,
     )
 
     num_training_steps = (
@@ -916,6 +921,10 @@ def train(args):
         // accelerator.gradient_accumulation_steps
         // dist.get_world_size()
     )
+    if args.max_train_steps is not None:
+        if args.max_train_steps <= 0:
+            raise ValueError("--max_train_steps must be positive.")
+        num_training_steps = min(num_training_steps, args.max_train_steps)
     lr_scheduler = get_cosine_schedule_with_warmup(
         optimizer,
         num_warmup_steps=int(args.warmup_rates * num_training_steps),
@@ -931,6 +940,7 @@ def train(args):
 
     metric = TrainingMetrics(device=torch.cuda.current_device())
     global_step = 0
+    optimizer_steps = 0
     T_per_frame = args.n_flare_tokens_per_frame
     S_steps = args.n_flare_steps
     K = T_per_frame * S_steps  # total flare tokens
@@ -1185,6 +1195,12 @@ def train(args):
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
+                optimizer_steps += 1
+
+                save_step_interval = getattr(args, "save_step_interval", 0)
+                reached_limit = args.max_train_steps is not None and optimizer_steps >= args.max_train_steps
+                if save_step_interval > 0 and optimizer_steps % save_step_interval == 0 and not reached_limit:
+                    save_checkpoint(model, processor, accelerator, args, epoch, global_step + 1, dataset.stats_data)
 
                 m = metric.get_metric()
                 if accelerator.is_main_process:
@@ -1222,11 +1238,16 @@ def train(args):
                     wandb.log(val_m, step=global_step)
 
             global_step += 1
+            if args.max_train_steps is not None and optimizer_steps >= args.max_train_steps:
+                break
 
-        if (epoch + 1) % args.save_freq == 0 or epoch == args.n_epochs - 1:
+        reached_step_limit = args.max_train_steps is not None and optimizer_steps >= args.max_train_steps
+        if (epoch + 1) % args.save_freq == 0 or epoch == args.n_epochs - 1 or reached_step_limit:
             accelerator.wait_for_everyone()
             save_checkpoint(model, processor, accelerator, args,
                             epoch, global_step, dataset.stats_data)
+        if reached_step_limit:
+            break
 
 
 if __name__ == "__main__":
@@ -1251,7 +1272,12 @@ if __name__ == "__main__":
     parser.add_argument("--max_ckpts", type=int, default=10)
 
     parser.add_argument("--n_epochs", type=int, default=200)
+    parser.add_argument("--max_train_steps", type=int, default=None,
+                        help="Stop after this many optimizer updates and save a checkpoint.")
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--save_freq", type=int, default=50)
+    parser.add_argument("--save_step_interval", type=int, default=0,
+                        help="Save every N optimizer updates; 0 keeps epoch-based saving only.")
     parser.add_argument("--train_bsz_per_gpu", type=int, default=1)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     parser.add_argument("--learning_rate", type=float, default=1e-4)

@@ -11,6 +11,8 @@ import io
 import json
 from pathlib import Path
 
+from mcap.reader import NonSeekingReader
+from mcap.reader import SeekingReader
 from mcap.reader import make_reader
 from mcap_ros2.decoder import DecoderFactory
 import numpy as np
@@ -145,6 +147,17 @@ def _pose9(message):
     )
 
 
+class _CachedSummaryReader(SeekingReader):
+    """Reuse an immutable recording's index across short-lived file handles."""
+
+    def __init__(self, stream, summary):
+        super().__init__(stream, decoder_factories=[DecoderFactory()])
+        self.summary = summary
+
+    def get_summary(self):
+        return self.summary
+
+
 class McapEpisode:
     """Keep numeric indices/JPEGs in memory; decode RAW/DEFORM lazily by chunk.
 
@@ -157,7 +170,9 @@ class McapEpisode:
         indexed = {topic: [] for topic in TOPICS}
         self._tactile_cache = OrderedDict()
         with open(self.path, "rb") as stream:
-            reader = make_reader(stream, decoder_factories=[DecoderFactory()])
+            # SeekingReader's insertion-order queue expands all chunks before
+            # yielding messages. Stream this full scan one chunk at a time.
+            reader = NonSeekingReader(stream, decoder_factories=[DecoderFactory()])
             for _, channel, message, decoded in reader.iter_decoded_messages(topics=TOPICS, log_time_order=False):
                 topic = channel.topic
                 if hasattr(decoded, "metadata_json"):
@@ -196,6 +211,8 @@ class McapEpisode:
                             raise ValueError(f"Unexpected hand command order on {topic}.")
                         value = np.asarray(decoded.position, dtype=np.float32)
                 indexed[topic].append(Record(source, message.log_time, value, clock, message.log_time))
+            stream.seek(0)
+            self._summary = make_reader(stream).get_summary()
         self.streams = {topic: Stream(records) for topic, records in indexed.items() if records}
 
     def at(self, topic, time_ns, *, max_age_ns=None):
@@ -259,7 +276,7 @@ class McapEpisode:
         if bucket not in self._tactile_cache:
             decoded_frames = {}
             with open(self.path, "rb") as stream:
-                reader = make_reader(stream, decoder_factories=[DecoderFactory()])
+                reader = _CachedSummaryReader(stream, self._summary)
                 for _, channel, message, decoded in reader.iter_decoded_messages(
                     topics=TACTILE_TOPICS,
                     start_time=bucket * 50_000_000,
