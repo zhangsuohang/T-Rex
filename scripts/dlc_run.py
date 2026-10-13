@@ -53,9 +53,9 @@ def archive_checkpoint(checkpoint):
     print(f"Checkpoint archived: {destination}", flush=True)
 
 
-def warmup_steps(steps):
+def warmup_steps(steps, requested=100):
     """Keep the decay phase valid even for one- and two-step smoke runs."""
-    return min(100, steps - 1)
+    return min(requested, steps - 1)
 
 
 def train_command(args, local, project):
@@ -64,7 +64,7 @@ def train_command(args, local, project):
     if args.model == "openpi":
         return [sys.executable, str(project / "scripts/dlc_run.py"), "--openpi-train"]
     if args.model == "ftp1":
-        return [
+        command = [
             sys.executable,
             "-u",
             "scripts/zarr_train_ftp1_pytorch.py",
@@ -73,7 +73,7 @@ def train_command(args, local, project):
             f"--dataset_config_path={DATA_ROOT / 'mcap_datasets.json'}",
             f"--assets_base_dir={assets}",
             f"--checkpoint_base_dir={checkpoints}",
-            "--batch_size=1",
+            f"--batch_size={args.batch_size}",
             "--num_workers=0",
             "--norm_num_workers=0",
             "--val_num_workers=0",
@@ -85,18 +85,32 @@ def train_command(args, local, project):
             "--model.tactile_tokenizer_config.no-load_t3_pretrained_checkpoint",
             "--no-use_torch_compile",
             "--log_interval=10",
-            "--save_interval=500",
+            "--save_interval=2000",
             f"--val_interval={0 if args.smoke else 500}",
-            f"--lr_schedule.warmup_steps={warmup_steps(args.steps)}",
-            "--lr_schedule.peak_lr=5e-6",
+            f"--lr_schedule.warmup_steps={warmup_steps(args.steps, 500)}",
+            "--lr_schedule.peak_lr=5e-5",
+            f"--lr_schedule.decay_steps={args.steps}",
+            "--lr_schedule.decay_lr=5e-6",
+            "--lr_decay_till_end",
         ]
+        if args.gpus > 1:
+            return [
+                sys.executable,
+                "-m",
+                "torch.distributed.run",
+                "--standalone",
+                "--nnodes=1",
+                f"--nproc_per_node={args.gpus}",
+                *command[2:],
+            ]
+        return command
     return [
         str(Path(sys.executable).parent / "accelerate"),
         "launch",
         "--config_file",
-        "config/sft.yaml",
+        "config/sft_qwen.yaml",
         "--num_processes",
-        "1",
+        str(args.gpus),
         "--main_process_port",
         "29612",
         "scripts/train_tianji_sharpa.py",
@@ -119,16 +133,18 @@ def train_command(args, local, project):
         "--n_epochs",
         "1000000",
         "--train_bsz_per_gpu",
+        str(args.batch_size // args.gpus),
+        "--gradient_accumulation_steps",
         "1",
         "--learning_rate",
-        "5e-6",
+        "1e-4",
         "--image_size",
         "224",
         "224",
         "--save_freq",
         "500",
         "--save_step_interval",
-        "500",
+        "2000",
         "--max_ckpts",
         "2",
         "--val_ratio",
@@ -149,21 +165,23 @@ def openpi_train():
     local = Path(os.environ["DLC_LOCAL_RUN"])
     base = config_lib.get_config("pi05_tianji_sharpa_mcap")
     steps = int(os.environ["DLC_TRAIN_STEPS"])
+    gpus = int(os.environ.get("DLC_TRAIN_GPUS", "1"))
+    batch_size = int(os.environ.get("DLC_TRAIN_BATCH_SIZE", "32"))
     config = dataclasses.replace(
         base,
         exp_name=os.environ["DLC_RUN_ID"],
         assets_base_dir=str(local / "assets"),
         checkpoint_base_dir=str(local / "checkpoints"),
-        batch_size=1,
+        batch_size=batch_size,
+        fsdp_devices=gpus,
         num_workers=0,
         num_train_steps=steps,
         log_interval=10,
-        save_interval=500,
+        save_interval=2000,
         keep_period=None,
         wandb_enabled=False,
-        ema_decay=None,
         lr_schedule=dataclasses.replace(
-            base.lr_schedule, warmup_steps=warmup_steps(steps), peak_lr=5e-6, decay_steps=steps
+            base.lr_schedule, warmup_steps=warmup_steps(steps, base.lr_schedule.warmup_steps), decay_steps=steps
         ),
     )
     init_logging()
@@ -174,7 +192,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=("openpi", "ftp1", "t-rex"), required=True)
     parser.add_argument("--run-id", required=True)
-    parser.add_argument("--steps", type=int, default=1000)
+    parser.add_argument("--steps", type=int, default=10000)
+    parser.add_argument("--gpus", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--batch-size", type=int, help="Global batch size; no gradient accumulation")
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -184,6 +204,10 @@ def main():
         args.steps = 2
     if args.steps <= 0:
         parser.error("--steps must be positive")
+    if args.batch_size is None:
+        args.batch_size = 1 if args.smoke else 32
+    if args.batch_size <= 0 or args.batch_size % args.gpus:
+        parser.error("--batch-size must be positive and divisible by --gpus")
     project = Path(__file__).resolve().parents[1]
     local = args.local_root / args.model / args.run_id
     archive = RUN_ROOT / args.model / args.run_id
@@ -214,7 +238,10 @@ def main():
             "DLC_ARCHIVE_ROOT": str(archive),
             "DLC_RUN_ID": args.run_id,
             "DLC_TRAIN_STEPS": str(args.steps),
+            "DLC_TRAIN_GPUS": str(args.gpus),
+            "DLC_TRAIN_BATCH_SIZE": str(args.batch_size),
             "WANDB_MODE": "disabled",
+            "PYTHONUNBUFFERED": "1",
             "HF_HUB_OFFLINE": "1",
             "HF_HUB_DISABLE_XET": "1",
             "OMP_NUM_THREADS": "4",
@@ -232,6 +259,11 @@ def main():
         "model": args.model,
         "run_id": args.run_id,
         "steps": args.steps,
+        "gpus": args.gpus,
+        "batch_size_per_gpu": args.batch_size // args.gpus,
+        "global_batch_size": args.batch_size,
+        "gradient_accumulation_steps": 1,
+        "save_interval_updates": 2000,
         "command": command,
         "job_id": env.get("DLC_JOB_ID"),
         "code_revision": env.get("DLC_CODE_REVISION"),
@@ -247,6 +279,15 @@ def main():
     signal.signal(signal.SIGTERM, terminate)
     try:
         with (local / "logs/train.log").open("w", buffering=1) as log:
+            if shutil.which("nvidia-smi"):
+                hardware = subprocess.run(
+                    ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout
+                log.write("GPU hardware:\n" + hardware)
+                print("GPU hardware:\n" + hardware, end="", flush=True)
             child = subprocess.Popen(
                 command,
                 cwd=project,
