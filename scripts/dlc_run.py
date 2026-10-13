@@ -53,6 +53,11 @@ def archive_checkpoint(checkpoint):
     print(f"Checkpoint archived: {destination}", flush=True)
 
 
+def warmup_steps(steps):
+    """Keep the decay phase valid even for one- and two-step smoke runs."""
+    return min(100, steps - 1)
+
+
 def train_command(args, local, project):
     assets = local / "assets"
     checkpoints = local / "checkpoints"
@@ -82,7 +87,7 @@ def train_command(args, local, project):
             "--log_interval=10",
             "--save_interval=500",
             f"--val_interval={0 if args.smoke else 500}",
-            "--lr_schedule.warmup_steps=100",
+            f"--lr_schedule.warmup_steps={warmup_steps(args.steps)}",
             "--lr_schedule.peak_lr=5e-6",
         ]
     return [
@@ -157,7 +162,9 @@ def openpi_train():
         keep_period=None,
         wandb_enabled=False,
         ema_decay=None,
-        lr_schedule=dataclasses.replace(base.lr_schedule, warmup_steps=100, peak_lr=5e-6, decay_steps=steps),
+        lr_schedule=dataclasses.replace(
+            base.lr_schedule, warmup_steps=warmup_steps(steps), peak_lr=5e-6, decay_steps=steps
+        ),
     )
     init_logging()
     train(config)
