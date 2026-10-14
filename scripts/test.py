@@ -231,7 +231,7 @@ def model_load(args):
 
     ckpt_file = os.path.join(ckpt, "model.pt")
     sd = torch.load(ckpt_file, map_location="cpu")
-    missing, unexpected = model.load_state_dict(sd, strict=False)
+    missing, unexpected = model.load_state_dict(sd, strict=getattr(args, "strict_load", False))
     print(f"Checkpoint loaded: missing={len(missing)}, unexpected={len(unexpected)}")
     if missing:
         print(f"  missing (first 10): {missing[:10]}")
